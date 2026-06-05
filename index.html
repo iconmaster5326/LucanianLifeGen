@@ -1,0 +1,1575 @@
+<!doctype html>
+<html>
+  <head></head>
+  <body>
+    <script>
+      const CONSONANTS = [
+        "c",
+        "d",
+        "f",
+        "g",
+        "h",
+        "k",
+        "l",
+        "n",
+        "r",
+        "ř",
+        "s",
+        "t",
+        "th",
+        "v",
+        "z",
+        "zh",
+      ];
+      const VOWELS = ["a", "e", "i", "o", "u", "y"];
+
+      const ALLOWED_BEGIN_DIPGRAPHS = {
+        c: new Set(["ř", "s", "v", "z"]),
+        d: new Set(["h", "ř", "l", "zh"]),
+        f: new Set(["h", "l", "r"]),
+        g: new Set(["h", "l", "r"]),
+        h: new Set([]),
+        k: new Set(["h", "l", "r"]),
+        l: new Set(["h", "ř"]),
+        n: new Set([]),
+        r: new Set(["h"]),
+        ř: new Set(["c", "h", "th", "zh"]),
+        s: new Set(["k", "n", "r", "t"]),
+        t: new Set(["ř"]),
+        th: new Set(["ř"]),
+        v: new Set(["h", "l", "r"]),
+        z: new Set(["ř"]),
+        zh: new Set(["ř"]),
+      };
+      const ALLOWED_END_DIPGRAPHS = {
+        c: new Set([]),
+        d: new Set([]),
+        f: new Set([]),
+        g: new Set([]),
+        h: new Set(["d", "f", "g", "k", "l", "r", "s", "t", "th", "z"]),
+        k: new Set([]),
+        l: new Set([]),
+        n: new Set([]),
+        r: new Set(["d", "f", "g", "k", "n", "s", "t", "th", "v", "z"]),
+        ř: new Set(["n", "s", "th", "v", "zh"]),
+        s: new Set([]),
+        t: new Set([]),
+        th: new Set([]),
+        v: new Set([]),
+        z: new Set([]),
+        zh: new Set([]),
+      };
+
+      const ASPECTS = [
+        "void",
+        "light",
+        "shadow",
+        "soul",
+        "wind",
+        "fire",
+        "thunder",
+        "steel",
+        "earth",
+        "water",
+        "life",
+        "blood",
+      ];
+
+      function randomNormal(mean = 0, stdDev = 1) {
+        const u1 = Math.random();
+        const u2 = Math.random();
+        const z0 =
+          Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
+        return z0 * stdDev + mean;
+      }
+
+      function longestRun(arr) {
+        if (arr.length === 0) return 0;
+
+        return arr.reduce(
+          (acc, curr, i) => {
+            if (i === 0) return acc;
+
+            if (curr === arr[i - 1]) {
+              acc.current++;
+              acc.max = Math.max(acc.max, acc.current);
+            } else {
+              acc.current = 1;
+            }
+            return acc;
+          },
+          { max: 1, current: 1 },
+        ).max;
+      }
+
+      function toUpperCase(str) {
+        return String(str).replace(/ř/g, "Ř").toUpperCase();
+      }
+
+      function toLowerCase(str) {
+        return String(str).replace(/Ř/g, "ř").toLowerCase();
+      }
+
+      function capitalize(str) {
+        const s = String(str);
+        return toUpperCase(s[0]) + s.slice(1);
+      }
+
+      function toTitleCase(str) {
+        return toLowerCase(str).split(/\s/).map(capitalize).join(" ");
+      }
+
+      function randomWord(letters) {
+        let result = [];
+        let letterTypeHistory = [];
+
+        // generate word from letters
+        for (let i = 0; i < letters; i++) {
+          const last = result[result.length - 1];
+          const lastType = letterTypeHistory[letterTypeHistory.length - 1];
+
+          let consWeight = 0.5;
+          if (lastType === "consonant") {
+            consWeight = 0.25;
+          } else if (lastType === "vowel") {
+            consWeight = 1;
+          }
+
+          const nextType = Math.random() < consWeight ? "consonant" : "vowel";
+          const nextPool = [
+            ...(nextType === "consonant" ? CONSONANTS : VOWELS),
+          ];
+
+          const dupIndex = nextPool.indexOf(last);
+          if (dupIndex !== -1) {
+            nextPool.splice(dupIndex, 1);
+          }
+
+          const next = nextPool[Math.floor(Math.random() * nextPool.length)];
+          result.push(next);
+          letterTypeHistory.push(nextType);
+        }
+
+        // reject bad words
+        if (letters >= 2) {
+          if (letterTypeHistory.every((t) => t === "consonant")) {
+            // word is all consonants
+            return randomWord(letters);
+          }
+        }
+
+        if (letters >= 3) {
+          if (longestRun(letterTypeHistory) >= 3) {
+            // word has a run of too many consonants
+            return randomWord(letters);
+          }
+
+          if (
+            letterTypeHistory[0] === "consonant" &&
+            letterTypeHistory[1] === "consonant"
+          ) {
+            const first = result[0];
+            const second = result[1];
+            const digraphLookupBegin = ALLOWED_BEGIN_DIPGRAPHS[first];
+            if (!digraphLookupBegin.has(second)) {
+              // word begins in unpronouncable consonant pile
+              return randomWord(letters);
+            }
+          }
+
+          if (
+            letterTypeHistory[result.length - 2] === "consonant" &&
+            letterTypeHistory[result.length - 1] === "consonant"
+          ) {
+            const secondLast = result[result.length - 2];
+            const last = result[result.length - 1];
+            const digraphLookupEnd = ALLOWED_END_DIPGRAPHS[secondLast];
+            if (!digraphLookupEnd.has(last)) {
+              // word ends in unpronouncable consonant pile
+              return randomWord(letters);
+            }
+          }
+        }
+
+        // return result
+        return result.join("");
+      }
+
+      function randomBroodName() {
+        return toTitleCase(
+          randomWord(Math.floor(Math.abs(randomNormal(1, 1))) + 2),
+        );
+      }
+
+      function randomGivenName() {
+        return toTitleCase(
+          randomWord(Math.floor(Math.abs(randomNormal(2.0, 1))) + 2),
+        );
+      }
+
+      function randomLucanianName() {
+        return `${randomBroodName()} ${randomGivenName()}`;
+      }
+
+      function pick(arr) {
+        if (!arr) return undefined;
+        return arr[Math.floor(Math.random() * arr.length)];
+      }
+
+      function plural(x, n) {
+        return x + (n === 1 ? "" : "s");
+      }
+
+      function pickWeighted(arr, fn = (x) => x.weight) {
+        if (!arr) return undefined;
+        const weights = arr.map(fn);
+        const totalWeight = weights.reduce((acc, val) => acc + val, 0);
+        const value = Math.random() * totalWeight;
+        let currentWeight = 0;
+        let index = 0;
+        while (
+          index < arr.length - 1 &&
+          currentWeight + weights[index] < value
+        ) {
+          currentWeight += weights[index];
+          index++;
+        }
+        return arr[index];
+      }
+
+      function listify(arr) {
+        if (arr.length < 2) {
+          return arr.join(", ");
+        } else {
+          return arr.slice(0, -1).join(", ") + " and " + arr[arr.length - 1];
+        }
+      }
+
+      class Pronouns {
+        constructor({
+          they,
+          them,
+          their,
+          theirs,
+          dragon,
+          canBearEggsChance,
+          canSireEggsChance,
+          pluralize,
+          weight,
+        }) {
+          this.they = they;
+          this.them = them;
+          this.their = their;
+          this.theirs = theirs;
+          this.dragon = dragon;
+          this.canBearEggsChance = canBearEggsChance;
+          this.canSireEggsChance = canSireEggsChance;
+          this.pluralize = pluralize;
+          this.weight = weight;
+        }
+
+        makePlural(word) {
+          return word + (this.pluralize ? "s" : "");
+        }
+
+        makeInversePlural(word) {
+          return word + (this.pluralize ? "" : "s");
+        }
+
+        are() {
+          return this.pluralize ? "is" : "are";
+        }
+
+        have() {
+          return this.pluralize ? "has" : "have";
+        }
+      }
+
+      const PRONOUNS = [
+        new Pronouns({
+          they: "he",
+          them: "him",
+          their: "his",
+          theirs: "his",
+          dragon: "drake",
+          canBearEggsChance: 0.01,
+          canSireEggsChance: 0.99,
+          pluralize: true,
+          weight: 1,
+        }),
+        new Pronouns({
+          they: "she",
+          them: "her",
+          their: "her",
+          theirs: "hers",
+          dragon: "hen",
+          canBearEggsChance: 0.99,
+          canSireEggsChance: 0.01,
+          pluralize: true,
+          weight: 1,
+        }),
+        new Pronouns({
+          they: "they",
+          them: "them",
+          their: "their",
+          theirs: "theirs",
+          dragon: "dragon",
+          canBearEggsChance: 0.5,
+          canSireEggsChance: 0.5,
+          pluralize: false,
+          weight: 0.5,
+        }),
+      ];
+
+      class WeightedName {
+        constructor(name, weight) {
+          this.name = name;
+          this.weight = weight;
+        }
+      }
+
+      const COLORS = [
+        new WeightedName("pink", 1),
+        new WeightedName("red", 1),
+        new WeightedName("beige", 1),
+        new WeightedName("orange", 1),
+        new WeightedName("brown", 1),
+        new WeightedName("cream", 1),
+        new WeightedName("yellow", 1),
+        new WeightedName("olive", 1),
+        new WeightedName("green", 1),
+        new WeightedName("cyan", 1),
+        new WeightedName("blue", 1),
+        new WeightedName("navy", 1),
+        new WeightedName("indigo", 1),
+        new WeightedName("purple", 1),
+        new WeightedName("violet", 1),
+        new WeightedName("white", 1),
+        new WeightedName("grey", 1),
+        new WeightedName("black", 1),
+        new WeightedName("iridescent", 0.5),
+      ];
+
+      const HIDE_TYPES = [
+        new WeightedName("scales", 4),
+        new WeightedName("fur", 1),
+        new WeightedName("feathers", 1),
+        new WeightedName("hide", 1),
+      ];
+
+      const COLOR_MODS = [
+        new WeightedName(() => `a ${pickWeighted(COLORS).name} underbelly`, 2),
+        new WeightedName(() => `${pickWeighted(COLORS).name} highlights`, 2),
+        new WeightedName(() => `${pickWeighted(COLORS).name} swirls`, 1),
+        new WeightedName(() => `${pickWeighted(COLORS).name} speckles`, 1),
+        new WeightedName(() => `${pickWeighted(COLORS).name} stripes`, 1),
+      ];
+
+      const MUTATIONS = [
+        new WeightedName(() => "a pair of antlers", 1),
+        new WeightedName(() => "a single, frontal horn", 1),
+        new WeightedName(() => "many horns", 2),
+        new WeightedName(() => "no horns", 2),
+        new WeightedName(() => "four eyes", 2),
+        new WeightedName(() => "no eyes", 0.5),
+        new WeightedName(() => "six legs", 2),
+        new WeightedName(() => "two pairs of wings", 1),
+        new WeightedName(() => "withered wings", 0.5),
+        new WeightedName(() => "no wings", 1),
+        new WeightedName(() => "wyvernization", 2),
+        new WeightedName(
+          () => `signs of ${pick(ASPECTS)}-aspectalization`,
+          0.5,
+        ),
+        new WeightedName(() => "two heads", 0.5),
+        new WeightedName(() => "a lame hind", 0.5),
+        new WeightedName(() => "three legs", 0.5),
+        new WeightedName(() => "lame hinds", 0.5),
+        new WeightedName(() => "an overbite", 1),
+        new WeightedName(() => "an underbite", 1),
+        new WeightedName(() => `${pickWeighted(COLORS).name} flesh`, 1),
+        new WeightedName(() => `${pickWeighted(COLORS).name} claws`, 1),
+        new WeightedName(() => `no claws`, 0.5),
+        new WeightedName(() => `a thick hide`, 1),
+        new WeightedName(() => `a thin hide`, 1),
+        new WeightedName(() => `an intact egg-tooth`, 2),
+        new WeightedName(() => `an additional claw on each fore`, 1),
+        new WeightedName(() => `two wing-thumbs`, 0.5),
+        new WeightedName(() => `no wing-thumbs`, 0.5),
+        new WeightedName(() => `no mouth`, 0.25),
+        new WeightedName(() => `no lower jaw`, 0.25),
+        new WeightedName(() => `a twisted form`, 0.25),
+        new WeightedName(() => `two tails`, 1),
+        new WeightedName(() => `a stubby tail`, 1),
+        new WeightedName(() => `a prehensile tail`, 1),
+        new WeightedName(() => `a barbed tail`, 1),
+        new WeightedName(() => `no tail`, 1),
+      ];
+
+      const JOBS = [
+        new WeightedName("archunter", 1),
+        new WeightedName("manciple", 1),
+        new WeightedName("diviner", 1),
+        new WeightedName("titler", 1),
+        new WeightedName("denkeeper", 1),
+        new WeightedName("returner", 1),
+        new WeightedName("librarian", 1),
+        new WeightedName("woodcutter", 1),
+        new WeightedName("quarrier", 1),
+        new WeightedName("windrider", 1),
+        new WeightedName("martial", 1),
+        new WeightedName("jeweller", 1),
+        new WeightedName("healer", 1),
+        new WeightedName("scholar", 1),
+        new WeightedName("craftsdragon", 1),
+        new WeightedName("tender", 1),
+        new WeightedName("tailor", 1),
+        new WeightedName("smith", 1),
+        new WeightedName("weaver", 1),
+        new WeightedName("tabletwright", 1),
+        new WeightedName("potter", 1),
+        new WeightedName("woodcarver", 1),
+        new WeightedName("stonecarver", 1),
+        new WeightedName("bonecarver", 1),
+        new WeightedName("painter", 1),
+        new WeightedName("crier", 1),
+        new WeightedName("playwright", 1),
+        new WeightedName("storyteller", 1),
+        new WeightedName("musician", 1),
+      ];
+
+      const LAIR_WORDS = [
+        ...ASPECTS,
+        "scale",
+        "claw",
+        "wing",
+        "talon",
+        "snout",
+        "tail",
+        "horn",
+        "eye",
+        "wood",
+        "stone",
+        "glass",
+        "iron",
+        "metal",
+        "rune",
+        "rock",
+        "clear",
+        "shine",
+        "glow",
+        "keep",
+        "fort",
+        "home",
+        "tree",
+        "walker",
+        "ooze",
+        "wolf",
+        "deer",
+        "heart",
+        "spear",
+        "blade",
+        "edge",
+        "cliff",
+        "shore",
+        "peak",
+        "summit",
+        "boar",
+        "bear",
+        "lion",
+        "great",
+        "dark",
+        "deep",
+        "shallow",
+        "smoke",
+        "mist",
+        "cloud",
+        "rain",
+        "snow",
+        "ice",
+        "frost",
+        "sand",
+        "dust",
+        "gold",
+        "opal",
+        "silver",
+        "bone",
+        "bird",
+        "hare",
+        "snake",
+        "flower",
+        "vine",
+        "oak",
+        "maple",
+        "ash",
+        "elm",
+        "apple",
+        "egg",
+        "dead",
+        "shell",
+        "antler",
+        "feather",
+        "gods",
+        "fall",
+        "bless",
+        "virtue",
+      ];
+
+      const LOCATIONS = [
+        "the central mountains",
+        "the western cliffs",
+        "the western lakes",
+        "Godfall Lake",
+        "the northwestern plains",
+        "the southwestern peaks",
+        "the northeastern desert",
+        "the Fields of Tar",
+        "the eastern woods",
+        "the Greatwood Forest",
+        "the Glade of Life",
+        "the Glade of Blood",
+        "the southeastern jungles",
+        "the southern marshes",
+        "the northern badlands",
+        "the Twilit Sea",
+        "the Zehponaerie",
+        "deep underground",
+      ];
+
+      const SEXUALITIES = [
+        new WeightedName("hetero", 0.7),
+        new WeightedName("homo", 0.15),
+        new WeightedName("pan", 0.1),
+        new WeightedName("ace", 0.05),
+      ];
+
+      const CAUSES_OF_DEATH = [
+        new WeightedName(() => `dies suddenly, of an accidental injury`, 1),
+        new WeightedName(() => `dies suddenly, of a flying accident`, 1),
+        new WeightedName(() => `dies suddenly, by tragic suicide`, 0.1),
+        new WeightedName(() => `dies suddenly, of a megafauna attack`, 1),
+        new WeightedName(
+          () =>
+            `dies suddenly, killed by ${randomLucanianName()} in a sparring match gone wrong`,
+          1,
+        ),
+        new WeightedName(
+          () =>
+            `dies suddenly, killed by ${randomLucanianName()} in a fit of rage`,
+          1,
+        ),
+        new WeightedName(
+          () =>
+            `dies suddenly, killed by ${randomLucanianName()} in self-defence`,
+          1,
+        ),
+        new WeightedName(
+          () =>
+            `dies suddenly, killed by ${randomLucanianName()} in cold calculation`,
+          0.5,
+        ),
+        new WeightedName(() => `dies languidly, of an aspectal imbalance`, 1),
+        new WeightedName(() => `dies languidly, of a deadly disease`, 1),
+        new WeightedName(() => `dies languidly, of a deadly parasite`, 1),
+        new WeightedName(
+          () => `dies languidly, of a deadly soul-misalignment`,
+          1,
+        ),
+        new WeightedName(() => `dies languidly, of wasting away`, 0.5),
+        new WeightedName(() => `dies languidly, of soul-sickness`, 0.5),
+        new WeightedName(() => `dies languidly, of Radiance-poisoning`, 0.5),
+      ];
+
+      function randomLair() {
+        return capitalize(`${pick(LAIR_WORDS)}${pick(LAIR_WORDS)}`);
+      }
+
+      class Clutch {
+        constructor(size, laidOn) {
+          this.size = size;
+          this.laidOn = laidOn;
+          this.incubationTime = Math.floor(Math.abs(randomNormal(3.6, 0.5)));
+        }
+      }
+
+      const MEANS_OF_IMMORTALITY = [
+        new WeightedName("becoming a lich", 1),
+        new WeightedName("becoming a ghost", 0.5),
+        new WeightedName("becoming an aspectal", 0.5),
+        new WeightedName("investing in Blood-regression", 1),
+        new WeightedName("investing in Life-shifting", 0.5),
+      ];
+
+      const VIRTUES = [
+        "Scoured",
+        "Cold-Glow",
+        "Golden Sign",
+        "Glimmering",
+        "Eremite",
+        "Conductor",
+        "Sear-Glass",
+        "Twinblade",
+        "Claw Unceasing",
+        "Wind-As-It-Will",
+        "Millwheel",
+        "Gap-In-The-World",
+        "Revrieé",
+        "Sunken",
+        "Hoarfrost",
+        "Pinpoint",
+        "Candleflame",
+        "High Hunter",
+        "Growth-Under-The-Wood",
+        "Remainder",
+        "Quicksilver",
+        "Sculptor",
+        "Steward",
+        "Envoy-In-Red",
+        "Longest Span",
+        "Breath-Mother",
+      ];
+
+      const VOWS = {
+        Scoured: [
+          (d) =>
+            `pry off ${d.pronouns.their} scales, shave off ${d.pronouns.their} fur, and pluck off ${d.pronouns.their} feathers`,
+          (d) => `never again wear clothing`,
+        ],
+        "Cold-Glow": [
+          (d) => `never again allow emotion to inform ${d.pronouns.them}`,
+          (d) => `never again extend a claw to another`,
+        ],
+        "Golden Sign": [
+          (d) => `recieve shifting to gain more eyes`,
+          (d) => `pursue forbidden knowledge`,
+        ],
+        Glimmering: [
+          (d) =>
+            `subsume ${d.pronouns.them}self under ostentacious dress in public at all times`,
+          (d) =>
+            `dedicate a room in ${d.pronouns.their} den to a massive hoard`,
+        ],
+        Eremite: [
+          (d) => `isolate ${d.pronouns.them}selves from all others`,
+          (d) => `never speak again`,
+        ],
+        Conductor: [
+          (d) => `form as large a polycule as possible`,
+          (d) => `always help others in need`,
+        ],
+        "Sear-Glass": [
+          (d) => `bottle up ${d.pronouns.their} emotions`,
+          (d) => `always display either intense emotion, or none at all`,
+        ],
+        Twinblade: [
+          (d) =>
+            `dedciate ${d.pronouns.them}self to ${d.pronouns.their} tradeskills`,
+          (d) => `hone ${d.pronouns.their} martial prowess`,
+        ],
+        "Claw Unceasing": [
+          (d) =>
+            `dedciate ${d.pronouns.them}self to ${d.pronouns.their} tradeskills`,
+          (d) => `create something new every sleep`,
+        ],
+        "Wind-As-It-Will": [
+          (d) => `always consult chance before decisions`,
+          (d) => `never make plans again`,
+        ],
+        Millwheel: [
+          (d) => `live nomadically, always returning to the same place`,
+          (d) => `do the same things every sleep`,
+        ],
+        "Gap-In-The-World": [
+          (d) => `remove one of ${d.pronouns.their} limbs`,
+          (d) => `gouge out ${d.pronouns.their} eyes`,
+        ],
+        Revrieé: [
+          (d) => `sleep as much as possible`,
+          (d) => `begin dreaming and never wake`,
+        ],
+        Sunken: [
+          (d) => `never speak the truth`,
+          (d) => `bury ${d.pronouns.their} most precious possessions`,
+        ],
+        Hoarfrost: [
+          (d) => `record everything that happens to them`,
+          (d) => `become and remain immortal`,
+        ],
+        Pinpoint: [
+          (d) =>
+            `dedciate ${d.pronouns.them}self to ${d.pronouns.their} tradeskills`,
+          (d) => `become utterly dedicated to their passions`,
+        ],
+        Candleflame: [
+          (d) => `always consult chance before decisions`,
+          (d) => `choose the date of ${d.pronouns.their} glorious death`,
+        ],
+        "High Hunter": [
+          (d) => `never use breath again`,
+          (d) => `live as a wild animal would`,
+        ],
+        "Growth-Under-The-Wood": [
+          (d) => `never eat fresh food again`,
+          (d) => `never clean ${d.pronouns.them}self again`,
+        ],
+        Remainder: [
+          (d) => `never feel joy again`,
+          (d) => `record everything that happens to them`,
+        ],
+        Quicksilver: [
+          (d) => `become and remain immortal`,
+          (d) => `enchant everything ${d.pronouns.they} touch`,
+        ],
+        Sculptor: [
+          (d) => `alter ${d.pronouns.their} form significantly`,
+          (d) => `remove one of ${d.pronouns.their} limbs`,
+        ],
+        Steward: [
+          (d) => `consume as much as dragonly possible`,
+          (d) => `never again lift a claw in labor`,
+        ],
+        "Envoy-In-Red": [
+          (d) => `self-flaggelate every sleep`,
+          (d) => `embed spikes into ${d.pronouns.their} hide`,
+        ],
+        "Longest Span": [
+          (d) => `never do something without planning in advance`,
+          (d) => `become and remain immortal`,
+        ],
+        "Breath-Mother": [
+          (d) => `never reject a fertilized clutch of eggs`,
+          (d) => `mate freely and often`,
+        ],
+      };
+
+      class Dragon {
+        constructor(name, aspect, pronouns) {
+          this.name = name;
+          this.aspect = aspect;
+          this.pronouns = pronouns;
+
+          this.life = new Map();
+          this.parents = [];
+          this.lifetimeDragonsApprenticed = 0;
+          this.lifetimeEggsMade = 0;
+          this.highestRankInJobs = {};
+          this.virtues = [];
+          this.age = 0;
+        }
+
+        displayName() {
+          return this.name || "the dragon";
+        }
+
+        displayAspect() {
+          return capitalize(this.aspect || "aspectless");
+        }
+
+        broodName() {
+          return this.name ? this.name.split(" ")[0] : undefined;
+        }
+
+        givenName() {
+          return this.name ? this.name.split(" ")[1] : undefined;
+        }
+
+        addLifeEntry(...text) {
+          const toAdd = text.join("<br/>");
+          if (this.life.has(this.age)) {
+            this.life.get(this.age).push(toAdd);
+          } else {
+            this.life.set(this.age, [toAdd]);
+          }
+        }
+
+        generateBasicDetails() {
+          this.name = randomLucanianName();
+          this.aspect = pick(ASPECTS);
+          this.generatePronouns();
+          return this;
+        }
+
+        setJourneymanAge() {
+          this.journeymanAge =
+            this.age + Math.abs(Math.floor(randomNormal(30, 10)));
+        }
+
+        setMasterAge() {
+          this.masterAge =
+            this.age + Math.abs(Math.floor(randomNormal(60, 20)));
+        }
+
+        setGrandmasterAge() {
+          this.grandmasterAge =
+            this.age + 200 + Math.abs(Math.floor(randomNormal(200, 50)));
+        }
+
+        getApprenticeAge() {
+          return 16 + Math.abs(Math.floor(randomNormal(4, 6)));
+        }
+
+        gainApprentice() {
+          if (!this.apprentices) {
+            this.apprentices = [];
+          }
+          const apprentice = new Dragon().generateBasicDetails();
+          apprentice.age = apprentice.getApprenticeAge();
+          apprentice.setJourneymanAge();
+          this.apprentices.push(apprentice);
+          return apprentice;
+        }
+
+        compatibleWith(other) {
+          switch (this.sexuality) {
+            case "homo":
+              return (
+                other.canBearEggs === this.canBearEggs ||
+                other.canSireEggs === this.canSireEggs
+              );
+            case "hetero":
+              return (
+                other.canBearEggs !== this.canBearEggs ||
+                other.canSireEggs !== this.canSireEggs
+              );
+            case "pan":
+              return true;
+            case "ace":
+              return false;
+          }
+        }
+
+        generatePronouns() {
+          this.pronouns = pickWeighted(PRONOUNS);
+          this.canBearEggs = Math.random() < this.pronouns.canBearEggsChance;
+          this.canSireEggs = Math.random() < this.pronouns.canSireEggsChance;
+        }
+
+        setNextEggAge() {
+          this.nextEggAge =
+            this.age + Math.abs(Math.floor(randomNormal(60, 5)));
+        }
+
+        becomeHermit() {
+          this.lair = undefined;
+          this.job = "hermit";
+          this.jobRank = "self-employed";
+          this.apprentices = [];
+          this.mentor = undefined;
+          this.journeymanAge = undefined;
+          this.masterAge = undefined;
+          this.grandmasterAge = undefined;
+          this.addLifeEntry(
+            `${this.pronouns.they} ${this.pronouns.makePlural("decide")} to become a hermit, settling in the wilds of ${this.location} and living a humble life of hunting and merriment.`,
+          );
+        }
+
+        generateLife() {
+          while (true) {
+            // add birth message
+            if (this.age === 0) {
+              this.generatePronouns();
+
+              const nParents = Math.abs(Math.floor(randomNormal(2.5, 0.25)));
+              for (let i = 0; i < nParents; i++) {
+                this.parents.push(new Dragon().generateBasicDetails());
+              }
+
+              this.lairborn = Math.random() < 0.7;
+              this.location = pick(LOCATIONS);
+              if (this.lairborn) {
+                this.lair = randomLair();
+              }
+              let place;
+              if (nParents === 0) {
+                if (this.lairborn) {
+                  place = `a forgotten corner of ${this.lair}`;
+                } else {
+                  place = `a lonely cave in ${this.location}`;
+                }
+              } else {
+                if (this.lairborn) {
+                  place = `the lair ${this.lair}`;
+                } else {
+                  place = `the wilds of ${this.location}`;
+                }
+              }
+
+              let parentMessage;
+              if (nParents === 0) {
+                parentMessage = `Nobody is around to witness ${this.pronouns.their} hatching in ${place}... And nobody comes for ${this.pronouns.them}.`;
+              } else {
+                parentMessage = `${capitalize(this.pronouns.their)} hatching in ${place} is witnessed by ${this.pronouns.their} ${plural("broodparent", nParents)} ${listify(this.parents.map((p) => p.displayName()))}.`;
+              }
+
+              const colorMods = [];
+              const nColorMods = Math.floor(Math.abs(randomNormal(0, 1.5)));
+
+              for (let i = 0; i < nColorMods; i++) {
+                colorMods.push(pickWeighted(COLOR_MODS).name());
+              }
+
+              const mutations = [];
+              const nMutations = Math.floor(Math.abs(randomNormal(0, 1.5)));
+
+              for (let i = 0; i < nMutations; i++) {
+                mutations.push(pickWeighted(MUTATIONS).name());
+              }
+
+              const eyeless = mutations.find((e) => e === "no eyes");
+              let features = `${pickWeighted(COLORS).name} ${pickWeighted(HIDE_TYPES).name}`;
+              if (nColorMods > 0) {
+                features += `, with ${listify(colorMods)}`;
+              }
+              if (!eyeless) {
+                features += `, and ${pickWeighted(COLORS).name} eyes`;
+              }
+
+              this.addLifeEntry(
+                `a brave new soul breaks free from ${this.pronouns.their} egg to witness Lucania!`,
+                `${capitalize(this.pronouns.they)} ${this.pronouns.makePlural("peek")} from ${this.pronouns.their} eggshell to display ${features}.`,
+                ...(nMutations === 0
+                  ? []
+                  : [
+                      `The gods have blessed ${this.pronouns.them}! ${capitalize(this.pronouns.they)} ${this.pronouns.are()} hatched with ${listify(mutations)}.`,
+                    ]),
+                parentMessage,
+              );
+            }
+
+            // add naming
+            if (!this.namingAge) {
+              this.namingAge = Math.abs(
+                Math.floor(
+                  this.parents.length === 0
+                    ? randomNormal(4, 1)
+                    : randomNormal(0, 0.5),
+                ),
+              );
+            }
+
+            if (!this.name && this.age === this.namingAge) {
+              this.name = randomGivenName();
+
+              if (this.parents.length > 0) {
+                this.addLifeEntry(
+                  `${pick(this.parents).displayName()} decides on naming ${this.pronouns.them} ${this.displayName()}.`,
+                );
+              } else {
+                this.addLifeEntry(
+                  `${this.pronouns.they} ${this.pronouns.makePlural("decide")} on naming ${this.pronouns.them}self ${this.displayName()}.`,
+                );
+              }
+            }
+
+            // add natural death
+            if (!this.lifespan) {
+              this.lifespan = Math.abs(
+                Math.floor(randomNormal(144 * 4, 144 * 0.5)),
+              );
+            }
+
+            if (this.lifespan <= this.age) {
+              this.addLifeEntry(
+                `${this.displayName()} dies peacefully of advanced age.`,
+                `Live on, and know that ${this.displayName()} once flew.`,
+              );
+              return this;
+            }
+
+            // add sudden death
+            let deathRate = 0.001;
+            if (this.lifespan === Infinity) {
+              deathRate /= 10;
+            }
+            if (Math.random() < deathRate) {
+              this.addLifeEntry(
+                `${this.displayName()} ${pickWeighted(CAUSES_OF_DEATH).name()}.`,
+                `Live on, and know that ${this.displayName()} once flew.`,
+              );
+              return this;
+            }
+
+            // add aspect discovery
+            if (!this.aspectAge) {
+              this.aspectAge = Math.abs(Math.floor(4 + randomNormal(3, 3)));
+            }
+
+            if (!this.aspect && this.age === this.aspectAge) {
+              this.aspect = pick(ASPECTS);
+              this.addLifeEntry(
+                `${this.pronouns.they} ${this.pronouns.makePlural("discover")} that ${this.pronouns.they} ${this.pronouns.are()} of the ${this.displayAspect()}-Aspect.`,
+                `The god of ${this.displayAspect()} smiles upon you and your breath, ${this.displayName()}!`,
+              );
+            }
+
+            // add flying
+            if (!this.flyingAge) {
+              this.flyingAge = Math.abs(Math.floor(randomNormal(10, 1)));
+            }
+
+            if (this.age === this.flyingAge) {
+              this.addLifeEntry(
+                `${this.pronouns.they} ${this.pronouns.makePlural("begin")} learning how to fly, officially crowning ${this.pronouns.them} as fledgling.`,
+              );
+            }
+
+            // add naming ceremony
+            if (!this.adultAge) {
+              this.adultAge = Math.abs(Math.floor(randomNormal(24, 2)));
+            }
+
+            if (this.name && this.age === this.adultAge) {
+              const broodnameFromParents =
+                this.parents.length === 0 ? false : Math.random() < 0.95;
+              const parent = pick(this.parents);
+              const broodname = broodnameFromParents
+                ? parent.broodName()
+                : randomBroodName();
+
+              let parentMessage;
+              if (this.parents.length === 0) {
+                parentMessage = `It came from the heart, with nobody else to take from...`;
+              } else if (broodnameFromParents) {
+                parentMessage = `${parent.displayName()} is so very proud to be chosen to carry on the ${broodname} brood.`;
+              } else {
+                parentMessage = `It comes as a shock to ${this.pronouns.their} ${plural("broodparent", this.parents.length)}.`;
+              }
+
+              this.name = `${broodname} ${this.name}`;
+              this.addLifeEntry(
+                `${this.pronouns.they} ${this.pronouns.are()} now a fine young ${this.pronouns.dragon} in the world's eyes!`,
+                `In a solemn ceremony, ${this.pronouns.they} ${this.pronouns.makePlural("choose")} the broodname of ${broodname}.`,
+                parentMessage,
+                `Long fly ${this.displayName()}!`,
+              );
+            }
+
+            // add apprenticship
+            if (!this.jobAge) {
+              this.jobAge = this.getApprenticeAge();
+            }
+
+            if (!this.job && this.age > this.adultAge && Math.random() < 0.05) {
+              this.job = "goodwill";
+              this.jobRank = "self-employed";
+              this.goodwill = pick([
+                "socialites",
+                "prostitutes",
+                "counselors",
+                "dreamers",
+              ]);
+              if (!this.lair) {
+                this.lair = randomLair();
+              }
+
+              this.addLifeEntry(
+                `with no productive ambitions, ${this.pronouns.they} ${this.pronouns.makePlural("become")} a goodwill, living in ${this.lair} among the lair's ${this.goodwill}.`,
+              );
+            }
+
+            if (!this.job && this.age === this.jobAge) {
+              if (Math.random() < 0.1) {
+                // hermit
+                this.becomeHermit();
+              } else if (Math.random() < 0.2) {
+                // self employed
+                this.job = pickWeighted(JOBS).name;
+                this.jobRank = "self-employed";
+                this.masterAge =
+                  this.age + Math.abs(Math.floor(randomNormal(100, 25)));
+
+                this.addLifeEntry(
+                  `${this.pronouns.they} ${this.pronouns.makePlural("take")} it upon ${this.pronouns.them}self to become a ${this.job}.`,
+                );
+              } else {
+                // apprenticed
+                this.mentor = new Dragon().generateBasicDetails();
+                this.mentor.jobRank = "master";
+                this.mentor.job = this.job = pickWeighted(JOBS).name;
+                this.jobRank = "apprentice";
+                this.setJourneymanAge();
+
+                const hadToMove = this.lair === undefined;
+                if (hadToMove) {
+                  this.lair = randomLair();
+                }
+
+                this.addLifeEntry(
+                  `${this.pronouns.they} ${this.pronouns.makePlural("take")} interest in the ${this.job} ${this.mentor.displayName()}'s work, and becomes ${this.mentor.pronouns.their} apprentice.`,
+                  ...(hadToMove
+                    ? [
+                        `${capitalize(this.pronouns.they)} ${this.pronouns.makePlural("move")} in with ${this.pronouns.their} mentor in the nearby lair of ${this.lair} to further learn.`,
+                      ]
+                    : []),
+                );
+              }
+            }
+
+            // add job progression
+            if (this.age === this.journeymanAge) {
+              const mentor = this.mentor;
+              if (mentor) {
+                this.jobRank = `journey${this.pronouns.dragon}`;
+                this.setMasterAge();
+
+                if (Math.random() < 0.5) {
+                  this.mentor = undefined;
+                }
+
+                this.addLifeEntry(
+                  `${this.pronouns.they} ${this.pronouns.have()} been dedicated in honing the art of the ${this.job}!`,
+                  `${mentor.displayName()} has deemed ${this.pronouns.them} a ${this.jobRank}, ${this.mentor ? "and they continue to work together" : "and they go their separate ways"}.`,
+                );
+              }
+            }
+
+            if (this.age === this.masterAge) {
+              this.jobRank = "master";
+              this.setGrandmasterAge();
+              this.mentor = undefined;
+              const apprentice = this.gainApprentice();
+
+              this.addLifeEntry(
+                `${this.pronouns.they} ${this.pronouns.have()} been dedicated in honing the art of the ${this.job}!`,
+                `${capitalize(this.pronouns.they)} ${this.pronouns.makePlural("take")} on ${this.pronouns.their} first apprentice, ${apprentice.displayName()}, officially becoming a ${this.jobRank}.`,
+              );
+            }
+
+            if (this.age === this.grandmasterAge) {
+              this.jobRank = "grandmaster";
+              this.addLifeEntry(
+                `${this.pronouns.they} ${this.pronouns.have()} been dedicated in honing the art of the ${this.job}!`,
+                `${capitalize(this.pronouns.they)} ${this.pronouns.are()} deemed peerless in the ${this.pronouns.their} craft by a titler, earning the title of ${this.jobRank}.`,
+              );
+            }
+
+            // add job changes
+            if (this.age > this.jobAge) {
+              let jobChangeChance = 0.001;
+              if (this.job === "hermit" || this.job === "goodwill") {
+                jobChangeChance /= 2;
+              }
+              if (this.lifespan === Infinity) {
+                jobChangeChance /= 10;
+              }
+
+              let becomeHermitChance = 0.0005;
+              if (this.job === "goodwill") {
+                becomeHermitChance /= 2;
+              }
+              if (this.lifespan === Infinity) {
+                becomeHermitChance /= 10;
+              }
+
+              if (Math.random() < jobChangeChance) {
+                const oldJobs = Object.keys(this.highestRankInJobs);
+                const missesOldJob = oldJobs.length > 0 && Math.random() < 0.7;
+                const newJob = missesOldJob
+                  ? pick(oldJobs)
+                  : pickWeighted(JOBS).name;
+                const newJobRank = this.highestRankInJobs[newJob];
+                if (newJob !== this.job) {
+                  if (this.job) {
+                    this.highestRankInJobs[this.job] = this.jobRank;
+                  }
+
+                  this.job = newJob;
+                  this.apprentices = [];
+                  this.mentor = undefined;
+
+                  if (newJobRank) {
+                    this.jobRank = newJobRank;
+                    switch (this.jobRank) {
+                      case "apprentice":
+                        this.mentor = new Dragon().generateBasicDetails();
+                        this.setJourneymanAge();
+                        break;
+                      case "journeydrake":
+                      case "journeyhen":
+                      case "journeydragon":
+                      case "self-employed":
+                        this.setMasterAge();
+                        break;
+                      case "master":
+                        this.setGrandmasterAge();
+                        break;
+                    }
+                    this.addLifeEntry(
+                      `${this.pronouns.they} ${this.pronouns.makePlural("decide")} to settle back into ${this.pronouns.their} life of being a ${this.job}.`,
+                    );
+                  } else {
+                    this.jobRank = "apprentice";
+                    this.mentor = new Dragon().generateBasicDetails();
+                    this.setJourneymanAge();
+                    this.addLifeEntry(
+                      `${this.pronouns.they} ${this.pronouns.makePlural("decide")} to try ${this.pronouns.their} claw at being a ${this.job} instead.`,
+                      `${capitalize(this.pronouns.they)} swiftly ${this.pronouns.makePlural("find")} a new mentor, ${this.mentor.displayName()}, willing to take ${this.pronouns.them} on.`,
+                    );
+                  }
+                }
+              } else if (
+                this.job != "hermit" &&
+                Math.random() < becomeHermitChance
+              ) {
+                if (this.job) {
+                  this.highestRankInJobs[this.job] = this.jobRank;
+                }
+                this.apprentices = [];
+                this.mentor = undefined;
+
+                this.becomeHermit();
+              }
+            }
+
+            // check apprentices
+            if (this.age > this.masterAge) {
+              if (Math.random() < 0.005) {
+                const apprentice = this.gainApprentice();
+                this.addLifeEntry(
+                  `${this.pronouns.they} ${this.pronouns.makePlural("take")} on a new apprentice, ${apprentice.displayName()}.`,
+                );
+              }
+
+              const apprenticesNotGraduated = [];
+              for (const apprentice of this.apprentices) {
+                if (apprentice.age === apprentice.journeymanAge) {
+                  this.lifetimeDragonsApprenticed++;
+                  const worksTogether = Math.random() < 0.5;
+                  this.addLifeEntry(
+                    `${this.pronouns.they} ${this.pronouns.makePlural("deem")} ${apprentice.displayName()} as a capable ${this.job}, and sends ${apprentice.pronouns.them} on ${apprentice.pronouns.their} way as a new journey${apprentice.pronouns.dragon}.`,
+                  );
+                } else {
+                  apprenticesNotGraduated.push(apprentice);
+                }
+              }
+              this.apprentices = apprenticesNotGraduated;
+            }
+
+            // check love
+            if (!this.mates) this.mates = [];
+            if (!this.sexuality) {
+              this.sexuality = pickWeighted(SEXUALITIES).name;
+              this.poly = Math.random() < 0.1;
+            }
+
+            if (
+              this.sexuality !== "ace" &&
+              this.age > this.adultAge &&
+              Math.random() < 0.005 &&
+              (this.poly || this.mates.length < 2)
+            ) {
+              const mate = new Dragon().generateBasicDetails();
+              mate.age = Math.abs(Math.floor(randomNormal(this.age, 10)));
+              do {
+                mate.generatePronouns();
+              } while (!this.compatibleWith(mate));
+              this.mates.push(mate);
+              mate.mateStatus = "courting";
+
+              this.addLifeEntry(
+                `${this.pronouns.they} began to court the ${mate.pronouns.dragon} ${mate.displayName()}.`,
+              );
+            }
+
+            for (const mate of this.mates) {
+              if (mate.mateStatus === "courting") {
+                if (Math.random() < 0.1) {
+                  mate.mateStatus = "mated";
+                  this.addLifeEntry(
+                    `${this.displayName()} and ${mate.displayName()} are joined together in mateship, in a humble yet beautiful ceremony.`,
+                    `May they fly entwined for all time!`,
+                  );
+                } else if (Math.random() < 0.05) {
+                  mate.mateStatus = undefined;
+                  this.addLifeEntry(
+                    `${this.displayName()} and ${mate.displayName()} decide not to move forward with their mateship.`,
+                  );
+                }
+              }
+            }
+            this.mates = this.mates.filter((m) => m.mateStatus);
+
+            // check eggs
+            if (!this.eggAge) {
+              this.eggAge = Math.abs(Math.floor(randomNormal(30, 4)));
+              this.menopauseAge = Math.abs(Math.floor(randomNormal(400, 50)));
+              this.setNextEggAge();
+              this.eggs = [];
+              this.children = [];
+            }
+
+            if (this.age > this.eggAge && this.age < this.menopauseAge) {
+              const validDragonsToBearEggs = [this, ...this.mates].filter(
+                (d) => d.canBearEggs,
+              );
+              const validDragonsToSireEggs = [this, ...this.mates].filter(
+                (d) => d.canSireEggs,
+              );
+
+              for (const dragon of validDragonsToBearEggs) {
+                if (!dragon.nextEggAge) dragon.setNextEggAge();
+                if (dragon.nextEggAge === this.age) {
+                  let fertilizedChance = 0.8;
+                  const sire =
+                    Math.random() < 0.05
+                      ? undefined
+                      : pick(validDragonsToSireEggs);
+                  if (!sire) {
+                    fertilizedChance = 0.2;
+                  }
+                  const fertilized = Math.random() < fertilizedChance;
+                  const clutchSize =
+                    1 + Math.abs(Math.floor(randomNormal(2.5, 1)));
+                  const family = [this, ...this.mates].map((d) =>
+                    d.displayName(),
+                  );
+
+                  if (fertilized) {
+                    this.eggs.push(new Clutch(clutchSize, this.age));
+                  }
+                  this.lifetimeEggsMade += clutchSize;
+
+                  this.addLifeEntry(
+                    `${dragon.displayName()} lays a clutch of ${clutchSize} eggs!`,
+                    fertilized
+                      ? sire
+                        ? `${sire.displayName()} is the sire. ${listify(family)} hastily ${plural("build", 1 - family.length)} a nest for the ${plural("egg", clutchSize)} and ${plural("consider", 1 - family.length)} what to do next.`
+                        : `The sire is unknown. ${listify(family)} nonetheless ${plural("take", 1 - family.length)} the ${plural("egg", clutchSize)} in as their own.`
+                      : `The ${plural("egg", clutchSize)} ${clutchSize === 1 ? "is" : "are"} not fertilized. The Solemn Feast is performed without melancholy.`,
+                  );
+                  dragon.setNextEggAge();
+                }
+              }
+            }
+
+            for (const clutch of this.eggs) {
+              if (this.age === clutch.laidOn + clutch.incubationTime) {
+                const hatchies = [];
+                for (let i = 0; i < clutch.size; i++) {
+                  const hatchie = new Dragon().generateBasicDetails();
+                  hatchie.name = randomGivenName();
+                  hatchies.push(hatchie);
+                }
+                this.children.push(...hatchies);
+
+                this.addLifeEntry(
+                  `the clutch of ${clutch.size} ${plural("egg", clutch.size)} hatch${clutch.size === 1 ? "es" : ""}! The ${plural("hatchling", clutch.size)} ${listify(hatchies.map((d) => d.displayName()))} ${clutch.size === 1 ? "is" : "are"} joyously brought into Lucania.`,
+                );
+
+                clutch.size = 0;
+              } else {
+                if (Math.random() < 0.22) {
+                  const nFailed =
+                    1 + Math.round(Math.random() * (clutch.size - 1));
+                  clutch.size -= nFailed;
+                  const broken = Math.random() < 0.2;
+
+                  this.addLifeEntry(
+                    `Tragically, ${nFailed} ${plural("egg", nFailed)} from their clutch are found to be ${broken ? "broken, a momentary lack of care bringing despair to the nest" : "cold, the dragon inside never to come to be"}. Woe for what could have been!`,
+                  );
+                } else if (Math.random() < 0.175) {
+                  clutch.size = 0;
+                  this.addLifeEntry(
+                    `they decide after much deliberation that they are ${pick(["not ready", "unwilling"])} to bring new life into the world. The Solemn Feast next drowsing is solemn indeed.`,
+                  );
+                }
+              }
+            }
+            this.eggs = this.eggs.filter((c) => c.size > 0);
+
+            // check immortality
+            if (this.lifespan !== Infinity && Math.random() < 0.001) {
+              this.lifespan = Infinity;
+              this.addLifeEntry(
+                `${this.pronouns.they} ${this.pronouns.makePlural("decide")} to pursue immortality by ${pickWeighted(MEANS_OF_IMMORTALITY).name}.`,
+                `Fly into eternity with open wings, ${this.displayName()}!`,
+              );
+            }
+
+            // check piety
+            let newVirtueChance = 0.0015;
+            for (let i = 0; i < this.virtues.length; i++) {
+              newVirtueChance /= 2;
+            }
+            if (this.lifespan === Infinity) {
+              newVirtueChance /= 10;
+            }
+
+            let vowChance = 0.002;
+            for (let i = 0; i < this.virtues.length; i++) {
+              vowChance /= 2;
+            }
+            if (this.lifespan === Infinity) {
+              vowChance /= 10;
+            }
+
+            if (Math.random() < newVirtueChance) {
+              const virtue = pick(
+                [...VIRTUES].filter((v) => this.virtues.indexOf(v) === -1),
+              );
+              if (virtue) {
+                this.virtues.push(virtue);
+                this.addLifeEntry(
+                  `${this.pronouns.they} ${this.pronouns.are()} intrigued by the Virtue of the ${virtue}, and ${this.pronouns.makePlural("decide")} to enter its mystery-cult.`,
+                );
+              }
+            } else if (!this.vow && Math.random() < vowChance) {
+              const virtue = pick(this.virtues);
+              if (virtue) {
+                const vow = pick(VOWS[virtue]);
+                if (vow) {
+                  this.vow = vow(this);
+                  this.addLifeEntry(
+                    `${this.pronouns.they} ${this.pronouns.makePlural("decide")} to more deeply show ${this.pronouns.their} faith in the Virtue of the ${virtue}, and ${this.pronouns.makePlural("take")} a vow to ${this.vow}.`,
+                  );
+                }
+              }
+            }
+
+            // move locations
+            let moveChance = 0.001;
+            if (this.age === Infinity) {
+              moveChance /= 10;
+            }
+
+            if (!this.mentor && Math.random() < moveChance) {
+              const newLoc = pick(LOCATIONS);
+              if (this.location !== newLoc) {
+                this.location = newLoc;
+                this.apprentices = [];
+
+                if (this.lair) {
+                  this.lair = randomLair();
+                  this.addLifeEntry(
+                    `${this.pronouns.they} ${this.pronouns.makePlural("decide")} to move to the lair of ${this.lair}, located in ${this.location}.`,
+                  );
+                } else {
+                  this.addLifeEntry(
+                    `${this.pronouns.they} ${this.pronouns.makePlural("make")} a journey to ${this.location} and settles there.`,
+                  );
+                }
+              }
+            }
+
+            // age up
+            this.age++;
+            for (const parent of this.parents ?? []) {
+              parent.age++;
+            }
+            for (const mate of this.mates ?? []) {
+              mate.age++;
+            }
+            for (const apprentice of this.apprentices ?? []) {
+              apprentice.age++;
+            }
+          }
+        }
+      }
+    </script>
+
+    <h1>Lucanian Generator</h1>
+
+    <div style="display: flex; justify-content: flex-start;">
+      <div style="margin: 8px;">
+        <h2>Life of <u id="name">the dragon</u>, the <u id="aspect">Aspectless</u> dragon</h2>
+        <button onclick="updateLife()">Generate A Life</button>
+        <ul id="life"></ul>
+        <script>
+          function updateLife() {
+            const dragon = new Dragon().generateLife();
+            document.getElementById("name").innerText = dragon.displayName();
+            document.getElementById("aspect").innerText =
+              dragon.displayAspect();
+            const life = document.getElementById("life");
+            life.replaceChildren();
+            for (const [age, events] of dragon.life.entries()) {
+              for (const event of events) {
+                const li = document.createElement("li");
+                li.innerHTML = `<b>On round ${age},</b> ${event}`;
+                life.appendChild(li);
+              }
+            }
+          }
+        </script>
+      </div>
+      <div style="margin: 8px;">
+        <h2>Name Generator</h2>
+
+        <p>
+          Number of names:
+          <input id="nNamesBox" type="number" value="10" style="width: 25%" />
+        </p>
+        <button onclick="updateNames()">Generate Names</button>
+        <p>
+          <b><ol id="nameBox"></ol></b>
+        </p>
+        <script>
+          function updateNames() {
+            const nameBox = document.getElementById("nameBox");
+            const nNames = Number(document.getElementById("nNamesBox").value);
+
+            nameBox.replaceChildren();
+            for (let i = 0; i < nNames; i++) {
+              const li = document.createElement("li");
+              li.innerText = randomLucanianName();
+              nameBox.appendChild(li);
+            }
+          }
+        </script>
+      </div>
+      <div style="margin: 8px;">
+        <h2>Statistics</h2>
+        <button onclick="startStopStats()">Start/Stop Stats</button>
+        <p id="stats"></p>
+        <script>
+          let totalEggs = 0;
+          let totalHatchies = 0;
+          let totalApprentices = 0;
+          let totalJobs = 0;
+          let totalVirtues = 0;
+          let totalVows = 0;
+
+          let statsGoing = false;
+          let totalRuns = 0;
+
+          function startStopStats() {
+            statsGoing = !statsGoing;
+          }
+
+          function updateStats() {
+            requestIdleCallback(function () {
+              if (statsGoing) {
+                for (let i = 0; i < 10; i++) {
+                  const dragon = new Dragon().generateLife();
+                  totalEggs += dragon.lifetimeEggsMade ?? 0;
+                  totalHatchies += (dragon.children ?? []).length;
+                  totalApprentices +=
+                    (dragon.lifetimeDragonsApprenticed ?? 0) +
+                    (this.apprentices ?? []).length;
+                  totalJobs +=
+                    Object.keys(dragon.highestRankInJobs).length +
+                    (dragon.job ? 1 : 0);
+                  totalVirtues += (dragon.virtues ?? []).length;
+                  totalVows += dragon.vow ? 1 : 0;
+                  totalRuns++;
+                }
+
+                document.getElementById("stats").innerHTML =
+                  `Dragons Simulated: ${totalRuns}<br/>
+             Average Eggs Borne: ${(totalEggs / totalRuns).toFixed(2)}<br/>
+             Average Hatchlings Begot: ${(totalHatchies / totalRuns).toFixed(2)}<br/>
+             Average Apprentices Tutored: ${(totalApprentices / totalRuns).toFixed(2)}<br/>
+             Average Careers Held: ${(totalJobs / totalRuns).toFixed(2)}<br/>
+             Average Virtues Dedicated To: ${(totalVirtues / totalRuns).toFixed(2)}<br/>
+             Average Vows Made: ${(totalVows / totalRuns).toFixed(2)}<br/>`;
+              }
+              updateStats();
+            });
+          }
+
+          updateStats();
+        </script>
+      </div>
+    </div>
+  </body>
+</html>
