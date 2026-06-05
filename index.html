@@ -250,7 +250,6 @@
           they,
           them,
           their,
-          theirs,
           dragon,
           canBearEggsChance,
           canSireEggsChance,
@@ -260,7 +259,6 @@
           this.they = they;
           this.them = them;
           this.their = their;
-          this.theirs = theirs;
           this.dragon = dragon;
           this.canBearEggsChance = canBearEggsChance;
           this.canSireEggsChance = canSireEggsChance;
@@ -290,7 +288,6 @@
           they: "he",
           them: "him",
           their: "his",
-          theirs: "his",
           dragon: "drake",
           canBearEggsChance: 0.01,
           canSireEggsChance: 0.99,
@@ -301,7 +298,6 @@
           they: "she",
           them: "her",
           their: "her",
-          theirs: "hers",
           dragon: "hen",
           canBearEggsChance: 0.99,
           canSireEggsChance: 0.01,
@@ -312,12 +308,21 @@
           they: "they",
           them: "them",
           their: "their",
-          theirs: "theirs",
           dragon: "dragon",
           canBearEggsChance: 0.5,
           canSireEggsChance: 0.5,
           pluralize: false,
           weight: 0.5,
+        }),
+        new Pronouns({
+          they: "it",
+          them: "it",
+          their: "its",
+          dragon: "dragon",
+          canBearEggsChance: 0.25,
+          canSireEggsChance: 0.25,
+          pluralize: true,
+          weight: 0.1,
         }),
       ];
 
@@ -1469,9 +1474,12 @@
 
     <h1>Lucanian Generator</h1>
 
-    <div style="display: flex; justify-content: flex-start;">
-      <div style="margin: 8px;">
-        <h2>Life of <u id="name">the dragon</u>, the <u id="aspect">Aspectless</u> dragon</h2>
+    <div style="display: flex; justify-content: flex-start">
+      <div style="margin: 8px">
+        <h2>
+          Life of <u id="name">the dragon</u>, the
+          <u id="aspect">Aspectless</u> dragon
+        </h2>
         <button onclick="updateLife()">Generate A Life</button>
         <ul id="life"></ul>
         <script>
@@ -1492,7 +1500,7 @@
           }
         </script>
       </div>
-      <div style="margin: 8px;">
+      <div style="margin: 8px">
         <h2>Name Generator</h2>
 
         <p>
@@ -1517,7 +1525,7 @@
           }
         </script>
       </div>
-      <div style="margin: 8px;">
+      <div style="margin: 8px">
         <h2>Statistics</h2>
         <button onclick="startStopStats()">Start/Stop Stats</button>
         <p id="stats"></p>
